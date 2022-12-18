@@ -164,6 +164,7 @@ impl Plugin {
                 if module_name == EXPORT_MODULE_NAME {
                     define_funcs!(name,  {
                         alloc(I64) -> I64;
+                        realloc(I64, I64) -> I64;
                         free(I64);
                         load_u8(I64) -> I32;
                         load_u64(I64) -> I64;

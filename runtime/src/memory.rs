@@ -193,6 +193,47 @@ impl PluginMemory {
         Ok(mem)
     }
 
+    pub fn realloc(
+        &mut self,
+        block: impl ToMemoryBlock,
+        new_length: usize,
+    ) -> Result<MemoryBlock, Error> {
+        let mut block = block.to_memory_block(self)?;
+        let mut shrink = false;
+        if new_length > block.length {
+            shrink = true;
+        }
+
+        let is_last_allocated = block.offset + block.length == self.position;
+        let length_diff = if shrink {
+            block.length.saturating_sub(new_length)
+        } else {
+            new_length.saturating_sub(block.length)
+        };
+        if is_last_allocated {
+            if shrink {
+                self.position -= length_diff;
+            } else {
+                self.position += length_diff;
+            }
+            block.length = new_length;
+            self.live_blocks.insert(block.offset, block.length);
+            return Ok(block);
+        }
+
+        let dest = self.alloc(new_length)?;
+        let ptr = self.memory.data_ptr(&mut self.store);
+        unsafe {
+            std::ptr::copy(
+                ptr.add(dest.offset),
+                ptr.add(block.offset),
+                block.length.min(new_length),
+            );
+        }
+        self.free(block.offset);
+        Ok(dest)
+    }
+
     /// Allocate and copy `data` into the wasm memory
     pub fn alloc_bytes(&mut self, data: impl AsRef<[u8]>) -> Result<MemoryBlock, Error> {
         let handle = self.alloc(data.as_ref().len())?;

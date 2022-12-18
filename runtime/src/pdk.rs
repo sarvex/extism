@@ -154,6 +154,23 @@ pub(crate) fn alloc(
     Ok(())
 }
 
+/// Realloc
+/// Params: i64 (offset), i64 (new length)
+/// Returns: i64 (offset)
+pub(crate) fn realloc(
+    mut caller: Caller<Internal>,
+    input: &[Val],
+    output: &mut [Val],
+) -> Result<(), Error> {
+    let data: &mut Internal = caller.data_mut();
+    let offs = data
+        .memory_mut()
+        .realloc(input[0].unwrap_i64() as usize, input[1].unwrap_i64() as _)?;
+    output[0] = Val::I64(offs.offset as i64);
+
+    Ok(())
+}
+
 /// Free memory
 /// Params: i64 (offset)
 /// Returns: none
