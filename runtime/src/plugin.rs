@@ -24,6 +24,35 @@ pub struct Internal {
     pub plugin: *mut Plugin,
     pub wasi: Option<Wasi>,
     pub http_status: u16,
+    pub events: EventCounter,
+}
+
+#[derive(Debug, Clone)]
+pub enum EventKind {
+    Enter,
+    Exit,
+    Trace,
+}
+
+pub struct Event {
+    pub kind: EventKind,
+    pub ts: std::time::Instant,
+}
+
+pub struct EventCounter {
+    pub start: std::time::Instant,
+    pub last: std::time::Duration,
+    pub events: Vec<Event>,
+}
+
+impl Default for EventCounter {
+    fn default() -> EventCounter {
+        EventCounter {
+            start: std::time::Instant::now(),
+            last: std::time::Duration::from_secs(0),
+            events: vec![],
+        }
+    }
 }
 
 pub struct Wasi {
@@ -73,6 +102,7 @@ impl Internal {
             wasi,
             plugin: std::ptr::null_mut(),
             http_status: 0,
+            events: EventCounter::default(),
         })
     }
 
@@ -112,6 +142,15 @@ impl Plugin {
         let mut store = Store::new(&engine, Internal::new(&manifest, with_wasi)?);
 
         store.epoch_deadline_callback(|_internal| Err(Error::msg("timeout")));
+        store.call_hook(|internal, _hook| {
+            let bt = wasmtime::WasmBacktrace::force_capture(&internal.memory().store);
+            for frame in bt.frames() {
+                if let (Some(m), Some(f)) = (frame.module_name(), frame.func_name()) {
+                    log::info!("- {}::{}", m, f);
+                }
+            }
+            Ok(())
+        });
 
         let memory = Memory::new(
             &mut store,
@@ -185,6 +224,31 @@ impl Plugin {
                         log_debug(I64);
                         log_error(I64);
                     });
+
+                    let t = FuncType::new([], []);
+                    let f = Func::new(&mut memory.store, t, pdk::instrument_enter);
+                    linker.define(
+                        &mut memory.store,
+                        EXPORT_MODULE_NAME,
+                        "instrument_enter",
+                        Extern::Func(f),
+                    )?;
+                    let t = FuncType::new([], []);
+                    let f = Func::new(&mut memory.store, t, pdk::instrument_exit);
+                    linker.define(
+                        &mut memory.store,
+                        EXPORT_MODULE_NAME,
+                        "instrument_exit",
+                        Extern::Func(f),
+                    )?;
+                    let t = FuncType::new([], []);
+                    let f = Func::new(&mut memory.store, t, pdk::instrument_trace);
+                    linker.define(
+                        &mut memory.store,
+                        EXPORT_MODULE_NAME,
+                        "instrument_trace",
+                        Extern::Func(f),
+                    )?;
 
                     for f in &mut imports {
                         let name = f.name().to_string();

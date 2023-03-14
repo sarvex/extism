@@ -757,6 +757,20 @@ pub unsafe extern "C" fn extism_log_file(
     if log4rs::init_config(config).is_err() {
         return false;
     }
+
+    metrics_exporter_prometheus::PrometheusBuilder::new()
+        .with_push_gateway(
+            "http://127.0.0.1:9091/metrics/job/example",
+            std::time::Duration::from_millis(1),
+        )
+        .expect("push gateway endpoint should be valid")
+        .idle_timeout(
+            metrics_util::MetricKindMask::COUNTER | metrics_util::MetricKindMask::HISTOGRAM,
+            Some(std::time::Duration::from_millis(1)),
+        )
+        .install()
+        .expect("failed to install Prometheus recorder");
+
     true
 }
 

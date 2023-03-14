@@ -26,6 +26,11 @@ extism-manifest = { version = "0.3.0", path = "../manifest" }
 pretty-hex = { version = "0.3" }
 uuid = { version = "1", features = ["v4"] }
 libc = "0.2"
+metrics = {version = "0.20"}
+metrics-exporter-tcp = "0.7.0"
+metrics-exporter-prometheus = "0.11"
+metrics-util = "*"
+
 
 [features]
 default = ["http", "register-http", "register-filesystem"]

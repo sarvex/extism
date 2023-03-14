@@ -456,3 +456,83 @@ pub(crate) fn log_error(
 ) -> Result<(), Error> {
     log(log::Level::Error, caller, input, _output)
 }
+
+pub(crate) fn instrument_enter(
+    mut caller: Caller<Internal>,
+    _input: &[Val],
+    _output: &mut [Val],
+) -> Result<(), Error> {
+    let mem = caller.data_mut().memory_mut();
+    let bt = wasmtime::WasmBacktrace::capture(&mem.store);
+    if bt.frames().len() < 2 || bt.frames().len() == 1 {
+        return Ok(());
+    }
+
+    // Update events
+    let ev = &mut caller.data_mut().events;
+    let event = plugin::Event {
+        kind: plugin::EventKind::Enter,
+        ts: std::time::Instant::now(),
+    };
+    let elapsed = event.ts - ev.start;
+    let fname = bt.frames().first().unwrap().func_name().unwrap();
+    log::info!("instrument.enter {} @ {:?}", fname, elapsed);
+    metrics::histogram!("instrument.enter", elapsed, "function" => fname.to_string());
+    ev.events.push(event);
+
+    Ok(())
+}
+
+pub(crate) fn instrument_exit(
+    mut caller: Caller<Internal>,
+    _input: &[Val],
+    _output: &mut [Val],
+) -> Result<(), Error> {
+    let mem = caller.data_mut().memory_mut();
+
+    let bt = wasmtime::WasmBacktrace::capture(&mem.store);
+    if bt.frames().len() < 2 || bt.frames().len() == 1 {
+        return Ok(());
+    }
+
+    // Update events
+    let ev = &mut caller.data_mut().events;
+    let event = plugin::Event {
+        kind: plugin::EventKind::Exit,
+        ts: std::time::Instant::now(),
+    };
+    let elapsed = event.ts - ev.start;
+    let fname = bt.frames().first().unwrap().func_name().unwrap();
+    log::info!("instrument.exit {} @ {:?}", fname, elapsed);
+    metrics::histogram!("instrument.exit", elapsed, "function" => fname.to_string());
+    ev.events.push(event);
+
+    Ok(())
+}
+
+pub(crate) fn instrument_trace(
+    mut caller: Caller<Internal>,
+    _input: &[Val],
+    _output: &mut [Val],
+) -> Result<(), Error> {
+    let mem = caller.data_mut().memory_mut();
+
+    let bt = wasmtime::WasmBacktrace::capture(&mem.store);
+    if bt.frames().len() < 2 || bt.frames().len() == 1 {
+        return Ok(());
+    }
+
+    // Update events
+    let ev = &mut caller.data_mut().events;
+    let event = plugin::Event {
+        kind: plugin::EventKind::Trace,
+        ts: std::time::Instant::now(),
+    };
+    let elapsed = event.ts - ev.start;
+    let fname = bt.frames().first().unwrap().func_name().unwrap();
+    log::info!("instrument.trace {} @ {:?}", fname, elapsed);
+    metrics::histogram!("instrument.trace", elapsed, "function" => fname.to_string());
+    ev.events.push(event);
+
+    Ok(())
+}
