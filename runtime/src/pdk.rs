@@ -463,6 +463,7 @@ pub(crate) fn instrument_enter(
     _output: &mut [Val],
 ) -> Result<(), Error> {
     let mem = caller.data_mut().memory_mut();
+    let pos = mem.position;
     let bt = wasmtime::WasmBacktrace::capture(&mem.store);
     if bt.frames().len() < 2 || bt.frames().len() == 1 {
         return Ok(());
@@ -476,7 +477,12 @@ pub(crate) fn instrument_enter(
     };
     let elapsed = event.ts - ev.start;
     let fname = bt.frames().first().unwrap().func_name().unwrap();
-    log::info!("instrument.enter {} @ {:?}", fname, elapsed);
+    log::info!(
+        "instrument.enter {} @ {:?}, {} bytes allocated",
+        fname,
+        elapsed,
+        pos
+    );
     metrics::histogram!("instrument.enter", elapsed, "function" => fname.to_string());
     ev.events.push(event);
 
@@ -490,6 +496,7 @@ pub(crate) fn instrument_exit(
 ) -> Result<(), Error> {
     let mem = caller.data_mut().memory_mut();
 
+    let pos = mem.position;
     let bt = wasmtime::WasmBacktrace::capture(&mem.store);
     if bt.frames().len() < 2 || bt.frames().len() == 1 {
         return Ok(());
@@ -503,7 +510,12 @@ pub(crate) fn instrument_exit(
     };
     let elapsed = event.ts - ev.start;
     let fname = bt.frames().first().unwrap().func_name().unwrap();
-    log::info!("instrument.exit {} @ {:?}", fname, elapsed);
+    log::info!(
+        "instrument.exit {} @ {:?}, {} bytes allocated",
+        fname,
+        elapsed,
+        pos
+    );
     metrics::histogram!("instrument.exit", elapsed, "function" => fname.to_string());
     ev.events.push(event);
 
@@ -516,6 +528,8 @@ pub(crate) fn instrument_trace(
     _output: &mut [Val],
 ) -> Result<(), Error> {
     let mem = caller.data_mut().memory_mut();
+    let pos = mem.position;
+    let pages = mem.pages();
 
     let bt = wasmtime::WasmBacktrace::capture(&mem.store);
     if bt.frames().len() < 2 || bt.frames().len() == 1 {
@@ -530,7 +544,13 @@ pub(crate) fn instrument_trace(
     };
     let elapsed = event.ts - ev.start;
     let fname = bt.frames().first().unwrap().func_name().unwrap();
-    log::info!("instrument.trace {} @ {:?}", fname, elapsed);
+    log::info!(
+        "instrument.trace {} @ {:?}, {} bytes allocated ({} pages)",
+        fname,
+        elapsed,
+        pos,
+        pages,
+    );
     metrics::histogram!("instrument.trace", elapsed, "function" => fname.to_string());
     ev.events.push(event);
 
