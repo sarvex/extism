@@ -483,7 +483,7 @@ pub(crate) fn instrument_enter(
         elapsed,
         pos
     );
-    metrics::histogram!("instrument.enter", elapsed, "function" => fname.to_string());
+    // metrics::histogram!("instrument.enter", elapsed, "function" => fname.to_string());
     ev.events.push(event);
 
     Ok(())
@@ -516,7 +516,7 @@ pub(crate) fn instrument_exit(
         elapsed,
         pos
     );
-    metrics::histogram!("instrument.exit", elapsed, "function" => fname.to_string());
+    // metrics::histogram!("instrument.exit", elapsed, "function" => fname.to_string());
     ev.events.push(event);
 
     Ok(())
@@ -551,7 +551,7 @@ pub(crate) fn instrument_trace(
         pos,
         pages,
     );
-    metrics::histogram!("instrument.trace", elapsed, "function" => fname.to_string());
+    // metrics::histogram!("instrument.trace", elapsed, "function" => fname.to_string());
     ev.events.push(event);
 
     Ok(())
