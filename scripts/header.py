@@ -71,10 +71,7 @@ class Visitor(c_ast.NodeVisitor):
 
         name = t.declname
         args = self.args(node.args)
-        if hasattr(t.type, 'name'):
-            return_type_name = t.type.name
-        else:
-            return_type_name = t.type.names[0]
+        return_type_name = t.type.name if hasattr(t.type, 'name') else t.type.names[0]
         const = hasattr(t.type, 'quals') and 'const' in t.type.quals
         return_type = Type(return_type_name, const=const, pointer=is_ptr)
         self.header.functions.append(Function(name, return_type, args))
@@ -92,7 +89,4 @@ class Header:
         return self.functions.__iter__()
 
     def __getitem__(self, func):
-        for f in self.functions:
-            if f.name == func:
-                return f
-        return None
+        return next((f for f in self.functions if f.name == func), None)

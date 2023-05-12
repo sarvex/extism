@@ -23,11 +23,7 @@ def count_vowels(data):
 
 
 def main(args):
-    if len(args) > 1:
-        data = args[1].encode()
-    else:
-        data = b"some data from python!"
-
+    data = args[1].encode() if len(args) > 1 else b"some data from python!"
     wasm_file_path = (
         pathlib.Path(__file__).parent.parent / "wasm" / "code-functions.wasm"
     )

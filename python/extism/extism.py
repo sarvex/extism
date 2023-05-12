@@ -67,10 +67,7 @@ def _locate():
 _ffi = FFI()
 _header, _lib = _locate()
 with open(_header) as f:
-    lines = []
-    for line in f.readlines():
-        if line[0] != "#":
-            lines.append(line)
+    lines = [line for line in f if line[0] != "#"]
     _ffi.cdef("".join(lines))
 _lib = _ffi.dlopen(_lib)
 
@@ -201,10 +198,7 @@ class Function:
         self.pointer = None
         args = [a.value for a in args]
         returns = [r.value for r in returns]
-        if len(user_data) > 0:
-            self.user_data = _ffi.new_handle(user_data)
-        else:
-            self.user_data = _ffi.NULL
+        self.user_data = _ffi.new_handle(user_data) if user_data else _ffi.NULL
         self.pointer = _lib.extism_function_new(
             name.encode(),
             args,
@@ -383,9 +377,7 @@ class Plugin:
         out_len = _lib.extism_plugin_output_length(self.ctx.pointer, self.plugin)
         out_buf = _lib.extism_plugin_output_data(self.ctx.pointer, self.plugin)
         buf = _ffi.buffer(out_buf, out_len)
-        if parse is None:
-            return buf
-        return parse(buf)
+        return buf if parse is None else parse(buf)
 
     def __del__(self):
         if not hasattr(self, "ctx"):
@@ -427,7 +419,7 @@ def _convert_output(x, v):
     elif x.t == ValType.F64:
         x.v.f64 = float(v.value)
     else:
-        raise Error("Unsupported return type: " + str(x.t))
+        raise Error(f"Unsupported return type: {str(x.t)}")
 
 
 class ValType(Enum):
@@ -464,9 +456,7 @@ class CurrentPlugin:
     def memory(self, mem: Memory) -> _ffi.buffer:
         """Access a block of memory"""
         p = _lib.extism_current_plugin_memory(self.pointer)
-        if p == 0:
-            return None
-        return _ffi.buffer(p + mem.offset, mem.length)
+        return None if p == 0 else _ffi.buffer(p + mem.offset, mem.length)
 
     def alloc(self, n: int) -> Memory:
         """Allocate a new block of memory of [n] bytes"""
